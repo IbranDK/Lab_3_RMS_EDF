@@ -69,3 +69,46 @@ def response_time(task: Task, higher: Sequence[Task]) -> int | None:
             return None
         r = r_next
 
+def hyperperiod(tasks: Iterable[Task]) -> int:
+    """Гиперпериод — наименьшее общее кратное периодов."""
+    return math.lcm(*(t.T for t in tasks))
+
+
+def simulate_rms(tasks: Sequence[Task], interval: int) -> list[str | None]:
+    """Вытесняющая симуляция RMS с шагом 1 мс.
+
+    Возвращает имя выполняющейся задачи на каждом такте (None — простой).
+    """
+    ordered = by_priority(tasks)
+    remaining = {t.name: 0 for t in ordered}
+    timeline: list[str | None] = []
+    for now in range(interval):
+        for t in ordered:
+            if now % t.T == 0:
+                remaining[t.name] += t.C
+        running = next((t.name for t in ordered if remaining[t.name] > 0), None)
+        if running is not None:
+            remaining[running] -= 1
+        timeline.append(running)
+    return timeline
+
+
+def gantt(tasks: Sequence[Task], interval: int) -> str:
+    """Текстовая диаграмма выполнения по RMS на интервале [0, interval]."""
+    timeline = simulate_rms(tasks, interval)
+    ordered = by_priority(tasks)
+    width = max(len(t.name) for t in ordered)
+    pad = " " * (width + 3)
+    tens = "".join(str(i // 10 % 10) if i % 10 == 0 else " " for i in range(interval))
+    ones = "".join(str(i % 10) for i in range(interval))
+    lines = [pad + tens, pad + ones]
+    for t in ordered:
+        row = "".join(
+            "█" if name == t.name else ("|" if i % t.T == 0 else "·")
+            for i, name in enumerate(timeline)
+        )
+        lines.append(f"{t.name.ljust(width)} | {row}")
+    idle = "".join("█" if name is None else "·" for name in timeline)
+    lines.append(f"{'Простой'.ljust(width)} | {idle}")
+    return "\n".join(lines)
+
