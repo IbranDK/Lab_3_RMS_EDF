@@ -43,3 +43,14 @@ def liu_layland_bound(n: int) -> float:
 def rms_schedulable(tasks: Sequence[Task]) -> bool:
     """Достаточный утилизационный тест: U <= n(2^(1/n) - 1)."""
     return utilization(tasks) <= liu_layland_bound(len(tasks))
+
+def edf_schedulable(tasks: Sequence[Task]) -> bool:
+    """EDF при неявных дедлайнах (D = T): необходимо и достаточно U <= 1.
+
+    Если есть D < T, применяется достаточное условие по плотности:
+    sum(C / min(D, T)) <= 1.
+    """
+    if all(t.D >= t.T for t in tasks):
+        return utilization(tasks) <= 1.0
+    return sum(t.C / min(t.D, t.T) for t in tasks) <= 1.0
+
