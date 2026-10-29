@@ -173,3 +173,17 @@ def load_tasks(path: Path) -> list[Task]:
         raise ValueError("Набор задач пуст.")
     return [_make_task(item, i) for i, item in enumerate(raw, start=1)]
 
+# =========================
+# Вывод
+# =========================
+def print_table(rows: list[list[str]], headers: list[str]) -> None:
+    widths = [max(len(x) for x in col) for col in zip(headers, *rows)]
+
+    def fmt(values: list[str]) -> str:
+        return " | ".join(v.ljust(w) for v, w in zip(values, widths))
+
+    print(fmt(headers))
+    print("-+-".join("-" * w for w in widths))
+    for r in rows:
+        print(fmt(r))
+
