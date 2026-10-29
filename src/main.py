@@ -54,3 +54,18 @@ def edf_schedulable(tasks: Sequence[Task]) -> bool:
         return utilization(tasks) <= 1.0
     return sum(t.C / min(t.D, t.T) for t in tasks) <= 1.0
 
+def response_time(task: Task, higher: Sequence[Task]) -> int | None:
+    """Анализ времени отклика: R(k+1) = C + sum(ceil(R(k) / Tj) * Cj), R(0) = C.
+
+    Итерация останавливается при R(k+1) = R(k) либо при R > D
+    (задача не укладывается в дедлайн -> None).
+    """
+    r = task.C
+    while True:
+        r_next = task.C + sum(math.ceil(r / h.T) * h.C for h in higher)
+        if r_next == r:
+            return r
+        if r_next > task.D:
+            return None
+        r = r_next
+
