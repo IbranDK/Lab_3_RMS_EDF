@@ -112,3 +112,31 @@ def gantt(tasks: Sequence[Task], interval: int) -> str:
     lines.append(f"{'Простой'.ljust(width)} | {idle}")
     return "\n".join(lines)
 
+def gantt_png(tasks: Sequence[Task], interval: int, path: Path) -> None:
+    """Сохраняет диаграмму выполнения в PNG (требуется matplotlib)."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    timeline = simulate_rms(tasks, interval)
+    ordered = by_priority(tasks)
+    fig, ax = plt.subplots(figsize=(10, 0.8 * len(ordered) + 1.4))
+    for row, t in enumerate(ordered):
+        y = len(ordered) - 1 - row
+        for i, name in enumerate(timeline):
+            if name == t.name:
+                ax.broken_barh([(i, 1)], (y - 0.35, 0.7),
+                               facecolors="#4472C4", edgecolors="white")
+        for k in range(interval // t.T + 1):
+            ax.plot([k * t.T] * 2, [y - 0.45, y + 0.45],
+                    color="#C00000", lw=1, ls="--")
+    ax.set_yticks(range(len(ordered)))
+    ax.set_yticklabels([t.name for t in reversed(ordered)])
+    ax.set_xlim(0, interval)
+    ax.set_xticks(range(0, interval + 1, 2))
+    ax.set_xlabel("Время, мс")
+    ax.grid(axis="x", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=200)
+
