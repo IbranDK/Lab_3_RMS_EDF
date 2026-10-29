@@ -187,3 +187,51 @@ def print_table(rows: list[list[str]], headers: list[str]) -> None:
     for r in rows:
         print(fmt(r))
 
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Планирование периодических задач (RMS, EDF)"
+    )
+    parser.add_argument("-i", "--input", type=Path, required=True,
+                        help="файл с задачами (CSV или JSON)")
+    parser.add_argument("--png", type=Path,
+                        help="сохранить диаграмму выполнения в PNG")
+    args = parser.parse_args()
+
+    tasks = load_tasks(args.input)
+    ordered = by_priority(tasks)
+    rows, all_ok = [], True
+    for i, t in enumerate(ordered):
+        r = response_time(t, ordered[:i])
+        ok = r is not None and r <= t.D
+        all_ok &= ok
+        shown = str(r) if r is not None else f">{t.D}"
+        rows.append([t.name, str(t.C), str(t.T), str(t.D), shown,
+                     "да" if ok else "нет"])
+    print_table(rows, ["Задача", "C", "T", "D", "R", "Уложилась"])
+
+    u, n = utilization(tasks), len(tasks)
+    bound = liu_layland_bound(n)
+    sign = "<=" if u <= bound else ">"
+    verdict = ("набор планируем" if rms_schedulable(tasks)
+               else "тест не пройден (достаточное условие не выполнено)")
+    print(f"\nЗагрузка: U = {u:.4f}")
+    print(f"RMS (Liu & Layland): граница n={n}: {bound:.4f}; "
+          f"U {sign} {bound:.4f} -> {verdict}")
+    print("RMS (время отклика): "
+          + ("все задачи укладываются в дедлайны" if all_ok
+             else "есть нарушения дедлайнов"))
+    edf_sign = "<=" if u <= 1 else ">"
+    print(f"EDF: U {edf_sign} 1 -> "
+          + ("набор планируем" if edf_schedulable(tasks) else "набор не планируем"))
+
+    hp = hyperperiod(tasks)
+    print(f"\nДиаграмма выполнения по RMS на [0, {hp}] "
+          f"(гиперпериод = {hp} мс), █ — выполнение, | — активация:")
+    print(gantt(tasks, hp))
+    if args.png:
+        gantt_png(tasks, hp, args.png)
+        print(f"\nPNG сохранён: {args.png}")
+
+
+if __name__ == "__main__":
+    main()
