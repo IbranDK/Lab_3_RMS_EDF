@@ -140,3 +140,36 @@ def gantt_png(tasks: Sequence[Task], interval: int, path: Path) -> None:
     fig.tight_layout()
     fig.savefig(path, dpi=200)
 
+# =========================
+# Ввод данных
+# =========================
+def _make_task(item: dict, idx: int) -> Task:
+    try:
+        task = Task(name=str(item["name"]), C=int(item["C"]),
+                    T=int(item["T"]), D=int(item["D"]))
+    except KeyError as e:
+        raise ValueError(f"В задаче #{idx} нет обязательного поля: {e}") from e
+    if task.C <= 0 or task.T <= 0 or task.D <= 0:
+        raise ValueError(
+            f"Некорректные значения у задачи '{task.name}': "
+            f"C={task.C}, T={task.T}, D={task.D}"
+        )
+    return task
+
+
+def load_tasks(path: Path) -> list[Task]:
+    """Читает набор задач из JSON ({"tasks": [...]}) или CSV (name,C,T,D)."""
+    if not path.exists():
+        raise FileNotFoundError(f"Файл не найден: {path}")
+    suffix = path.suffix.lower()
+    if suffix == ".json":
+        raw = json.loads(path.read_text(encoding="utf-8")).get("tasks", [])
+    elif suffix == ".csv":
+        with path.open(encoding="utf-8", newline="") as f:
+            raw = list(csv.DictReader(f))
+    else:
+        raise ValueError("Поддерживаются только файлы .json и .csv")
+    if not raw:
+        raise ValueError("Набор задач пуст.")
+    return [_make_task(item, i) for i, item in enumerate(raw, start=1)]
+
